@@ -16,5 +16,6 @@ venv/
 # Project
 assets/
 output/
+tmp/
 PLAN.md
 .env
