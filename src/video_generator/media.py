@@ -77,9 +77,10 @@ def pick_random_audio(folder: Path, exts: set[str], lyrics_ext: str = ".srt") ->
         path = folder / name
         if path.suffix.lower() not in exts:
             continue
-        lyrics = path.stem + lyrics_ext
-        if lyrics in names:
-            songs.append(Audio(path=path, lyrics_path=folder / lyrics, duration=probe_duration(path)))
+        
+        lyrics_path = path.with_suffix(lyrics_ext)
+        if lyrics_path in names:
+            songs.append(Audio(path=path, lyrics_path=lyrics_path, duration=probe_duration(path)))
 
     if not songs:
         raise FileNotFoundError(f"No songs found in {folder}")

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum
-from media import Background, Audio, BackgroundType
 from pathlib import Path
 import subprocess
 
-from config import TMP_VIDEO_CONCAT_DIR, TMP_AUDIO_DIR, OUTPUT_DIR
+from .media import Background, Audio, BackgroundType
+from .config import TMP_VIDEO_CONCAT_DIR, TMP_AUDIO_DIR, OUTPUT_DIR
 
 class AudioSpeed(str, Enum):
     SLOWED = "slowed"
@@ -19,23 +19,28 @@ class MontageParams:
     # start_fade_in: bool
     # end_fade_out: bool
 
+class FullVideoDuration(float, Enum):
+    SHORT = 5       # секунды
+    STANDARD = 10   # секунды
+    LONG = 15       # секунды
+
 @dataclass
 class BackgroundConfig:
     background_type: BackgroundType
     background_assets: list[Background]
-    full_duration: float        # длительность итогового видео
-    duration_per_asset: float   # должен быть <= для любого background_asset[i]
+    full_duration: FullVideoDuration        # длительность итогового видео
+    duration_per_asset: float               # должен быть <= для любого background_asset[i]
 
 @dataclass
 class AudioConfig:
     speed: AudioSpeed
     audio_asset: Audio
-    full_duration: float        # длительность итогового видео
+    full_duration: FullVideoDuration        # длительность итогового видео
 
 @dataclass
 class Video:
     path: Path
-    duration: float            # длительность итогового видео
+    duration: FullVideoDuration            # длительность итогового видео
     background: Background
     audio: Audio
     montage_params: MontageParams
@@ -49,7 +54,6 @@ class Montage:
         audio_config: AudioConfig,
         montage_params: MontageParams
     ):
-        # WARN: сравнение float может работать некорректно
         if background_config.full_duration != audio_config.full_duration:
             raise ValueError(
                 "Background and audio durations differ: "
@@ -98,7 +102,7 @@ class Montage:
         ]
         subprocess.run(cmd, check=True)
 
-        return Background(path=out, type_=BackgroundType.VIDEO, duration=cfg.full_duration)
+        return Background(path=out, type_=BackgroundType.VIDEO, duration=cfg.full_duration.value)
         
 
     def concat_image_backgrounds(self) -> Background:
@@ -138,7 +142,7 @@ class Montage:
         ]
         subprocess.run(cmd, check=True)
 
-        return Background(path=out, type_=BackgroundType.VIDEO, duration=cfg.full_duration)
+        return Background(path=out, type_=BackgroundType.VIDEO, duration=cfg.full_duration.value)
 
     def add_lyrics(self, background: Background) -> Background:
         pass
@@ -150,7 +154,7 @@ class Montage:
         cfg = self.audio_config
         audio_asset = cfg.audio_asset
         speed = cfg.speed
-        duration = cfg.full_duration
+        duration = cfg.full_duration.value
         TMP_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
         out = TMP_AUDIO_DIR / "audio_mid_montage.mp3" # TODO: изменить имя файла
 
@@ -181,7 +185,8 @@ class Montage:
     def make_video(self, background: Background, audio: Audio) -> Video:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         out = OUTPUT_DIR / "final.mp4"  # TODO: изменить имя файла
-        duration = audio.duration
+        cfg = self.audio_config
+        duration = cfg.full_duration
 
         subprocess.run(
             [
